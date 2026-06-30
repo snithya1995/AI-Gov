@@ -77,7 +77,7 @@ app.use('/assets', assetsRouter);
 // PROTECTED ROUTES (AUTH + RATE LIMIT)
 // ------------------------------
 app.use(authenticateToken);
-// app.use(userQuotaLimiter); // DISABLED FOR TESTING
+app.use(userQuotaLimiter);
 
 // ------------------------------
 // PROTECTED ROUTES

@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Alert } from '@mui/material';
 import chatAgentService from '../../services/chatAgentService.js';
+import { getProjects } from '../../services/projectService.js';
 import { 
   ChatHeader, 
   ChatMessages, 
@@ -18,6 +19,8 @@ const ChatAgent = () => {
   const [riskAnalysis, setRiskAnalysis] = useState(null);
   const [isAnalyzingRisks, setIsAnalyzingRisks] = useState(false);
   const [showRiskAnalysis, setShowRiskAnalysis] = useState(false);
+  const [projects, setProjects] = useState([]);
+  const [selectedProjectId, setSelectedProjectId] = useState('');
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
 
@@ -29,17 +32,36 @@ const ChatAgent = () => {
     scrollToBottom();
   }, [messages]);
 
-  // Initialize chat on component mount
+  // Load Projects on mount
   useEffect(() => {
-    initializeChat();
+    const loadProjects = async () => {
+      try {
+        const data = await getProjects();
+        setProjects(data || []);
+        if (data?.[0]?.projectId) {
+          setSelectedProjectId(data[0].projectId);
+        }
+      } catch (err) {
+        console.error('Failed to load projects:', err);
+      }
+    };
+    loadProjects();
   }, []);
+
+  // Initialize chat when projectId changes
+  useEffect(() => {
+    if (selectedProjectId) {
+      resetChat();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedProjectId]);
 
   const initializeChat = async () => {
     try {
       setError(null);
       setIsTyping(true);
       
-      const response = await chatAgentService.startChat();
+      const response = await chatAgentService.startChat(selectedProjectId);
       
       setSessionId(response.session_id);
       
@@ -76,7 +98,7 @@ const ChatAgent = () => {
     setIsTyping(true);
 
     try {
-      const response = await chatAgentService.sendMessage(sessionId, userAnswer);
+      const response = await chatAgentService.sendMessage(sessionId, userAnswer, selectedProjectId);
       
       if (response.finished) {
         // Chat is finished, show summary
@@ -232,6 +254,29 @@ const ChatAgent = () => {
         isTyping={isTyping}
         onResetChat={resetChat}
       />
+
+      {/* Project Selector */}
+      <div className="bg-white border rounded-xl p-3 mb-3 shadow-sm flex items-center space-x-3">
+        <label className="text-xs font-semibold text-gray-500">Project Context:</label>
+        <select
+          value={selectedProjectId}
+          onChange={(e) => setSelectedProjectId(e.target.value)}
+          className="text-xs rounded-lg border-gray-200 bg-white px-2.5 py-1.5 focus:border-indigo-500 focus:ring-indigo-500"
+        >
+          {projects.length === 0 ? (
+            <option value="">No projects available</option>
+          ) : (
+            <>
+              <option value="" disabled>Select a project…</option>
+              {projects.map(project => (
+                <option key={project.projectId} value={project.projectId}>
+                  {project.projectName} ({project.projectId})
+                </option>
+              ))}
+            </>
+          )}
+        </select>
+      </div>
 
       {/* Error Alert */}
       {error && (

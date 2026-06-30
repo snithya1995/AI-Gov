@@ -70,11 +70,11 @@ router.put('/chat-session/:projectId', async (req, res) => {
 // POST /requirements/collect - Send chat messages to AI collection agent
 router.post('/collect', async (req, res) => {
   try {
-    const { session_id, messages } = req.body;
+    const { session_id, messages, project_id } = req.body;
     if (!messages) {
       return res.status(400).json({ success: false, error: 'messages is required' });
     }
-    const response = await axios.post(`${AGENT_URL}/agent/collection/collect`, { session_id, messages });
+    const response = await axios.post(`${AGENT_URL}/agent/collection/collect`, { session_id, messages, project_id });
     res.json({ success: true, data: response.data });
   } catch (error) {
     console.error('Error calling collection agent:', error.message);

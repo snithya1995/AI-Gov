@@ -328,7 +328,7 @@ const Questionnaire = () => {
       if (found && found.questions) {
         setTemplateQuestions(
           found.questions.map((q) => ({
-            id: q.id,
+            id: q.id || q._id || q.questionText,
             questionText: q.questionText,
             responseType: q.responseType,
             isRequired: q.isRequired,
@@ -388,7 +388,7 @@ const Questionnaire = () => {
     if (template && template.questions) {
       const templateResponseMap = {};
       template.questions.forEach((q, index) => {
-        const questionId = q.id; // Use the same unique ID
+        const questionId = q.id || q._id || q.questionText; // Use the same unique ID
         templateResponseMap[questionId] = example.answers[index] || "";
       });
       // Set the specific answers for the loaded template questions

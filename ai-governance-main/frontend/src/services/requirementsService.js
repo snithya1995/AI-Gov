@@ -52,10 +52,10 @@ export const deleteRequirement = async (id) => {
 // AI COLLECTION ENDPOINT
 // ============================================
 // Collect requirements from AI chat agent
-export const collectRequirements = async (sessionId, messages) => {
+export const collectRequirements = async (sessionId, messages, projectId) => {
   const response = await axios.post(
     `${API_BASE}/requirements/collect`,
-    { session_id: sessionId, messages },
+    { session_id: sessionId, messages, project_id: projectId },
     { headers: getAuthHeaders() }
   );
   return response.data;

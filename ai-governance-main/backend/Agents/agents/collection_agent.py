@@ -24,6 +24,8 @@ class CollectionState(TypedDict):
     requirements: List[Dict[str, Any]]
     next_question: str
     finished: bool
+    project_id: Optional[str]
+    context_grounding: Optional[str]
 
 
 EXTRACTION_PROMPT = """
@@ -92,6 +94,9 @@ def extract_requirements(state: CollectionState):
     llm = get_chat_model(temperature=0)
     history = "\n".join(f"{m['role']}: {m['content']}" for m in state["messages"])
     prompt = EXTRACTION_PROMPT.format(history=history)
+    grounding = state.get("context_grounding") or ""
+    if grounding:
+        prompt = f"Grounding Context (Ground extracted requirements here when relevant):\n{grounding}\n\n" + prompt
 
     try:
         response = llm.invoke(prompt)
@@ -106,6 +111,9 @@ def generate_response(state: CollectionState):
     llm = get_chat_model(temperature=0.2)
     history = "\n".join(f"{m['role']}: {m['content']}" for m in state["messages"])
     prompt = CHAT_PROMPT.format(history=history)
+    grounding = state.get("context_grounding") or ""
+    if grounding:
+        prompt = f"Grounding Context (Use this to customize follow-ups and ground suggestions):\n{grounding}\n\n" + prompt
 
     try:
         response = llm.invoke(prompt)
@@ -131,6 +139,7 @@ _graph = build_graph()
 class CollectionIn(BaseModel):
     session_id: Optional[str] = None
     messages: List[Dict[str, str]]
+    project_id: Optional[str] = None
 
 
 class CollectionOut(BaseModel):
@@ -170,11 +179,70 @@ async def collect_requirements(payload: CollectionIn):
             finished=False,
         )
 
+    context_grounding = ""
+    if payload.project_id:
+        try:
+            from .library_store import _db
+            db = _db()
+            if db is not None:
+                project = db.projects.find_one({"projectId": payload.project_id})
+                if project:
+                    context_grounding += f"=== Active Project: {project.get('projectName', 'Unnamed')} ===\n"
+                    q_resp = project.get("questionnaireResponses")
+                    if q_resp:
+                        context_grounding += "Project Questionnaire Answers:\n"
+                        for key, val in q_resp.items():
+                            if val:
+                                context_grounding += f"- {key}: {val}\n"
+                    
+                    # Fetch assets
+                    project_obj_id = project.get("_id")
+                    if project_obj_id:
+                        assets = list(db.assets.find({"project": project_obj_id}))
+                        if assets:
+                            context_grounding += "\nProject Registered Assets:\n"
+                            for a in assets:
+                                context_grounding += f"- Name: {a.get('name')} | Type: {a.get('type')} | Risk Level: {a.get('riskLevel')} | Description: {a.get('description')}\n"
+                    
+                    # Fetch requirements
+                    reqs = list(db.securityrequirements.find({"projectId": payload.project_id}))
+                    if reqs:
+                        context_grounding += "\nProject Saved Security Requirements:\n"
+                        for r in reqs:
+                            context_grounding += f"- Title: {r.get('title')} | Category: {r.get('category')} | Priority: {r.get('priority')} | Description: {r.get('description')}\n"
+        except Exception as db_err:
+            print(f"Error fetching MongoDB project context for grounding: {db_err}")
+
+    # Load predefined risks and controls from Excel library
+    try:
+        from .library_store import read_ai_risks_from_store, read_ai_controls_from_store
+        ai_risks = read_ai_risks_from_store()
+        ai_controls = read_ai_controls_from_store()
+        
+        context_grounding += "\n=== Reference Excel Framework Library ===\n"
+        context_grounding += "Predefined AI Risks:\n"
+        for _, row in ai_risks.head(15).iterrows():
+            risk_id = row.get("risk id") or row.get("risk") or ""
+            risk_name = row.get("risk name") or row.get("risk") or ""
+            mitigation = row.get("mitigation") or ""
+            context_grounding += f"- [{risk_id}] {risk_name} (Mitigation: {mitigation})\n"
+            
+        context_grounding += "\nPredefined AI Controls:\n"
+        for _, row in ai_controls.head(15).iterrows():
+            code = row.get("code") or row.get("control_id") or ""
+            ctrl = row.get("control") or ""
+            reqs = row.get("requirements") or ""
+            context_grounding += f"- [{code}] {ctrl} (Requirements: {reqs})\n"
+    except Exception as ee:
+        print(f"Error loading Excel libraries for grounding: {ee}")
+
     inputs: CollectionState = {
         "messages": payload.messages,
         "requirements": [],
         "next_question": "",
         "finished": False,
+        "project_id": payload.project_id,
+        "context_grounding": context_grounding
     }
 
     try:

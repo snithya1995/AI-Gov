@@ -45,12 +45,12 @@ const handleFetchErrors = async (response) => {
 };
 
 class ChatAgentService {
-  async startChat() {
+  async startChat(projectId = null) {
     try {
       const response = await fetch(getAgentUrl('/agent/chat'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ session_id: null, answer: null })
+        body: JSON.stringify({ session_id: null, answer: null, project_id: projectId })
       });
 
       // 🚨 CRITICAL: Check for errors immediately after the fetch call
@@ -63,12 +63,12 @@ class ChatAgentService {
     }
   }
 
-  async sendMessage(sessionId, answer) {
+  async sendMessage(sessionId, answer, projectId = null) {
     try {
       const response = await fetch(getAgentUrl('/agent/chat'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ session_id: sessionId, answer: answer })
+        body: JSON.stringify({ session_id: sessionId, answer: answer, project_id: projectId })
       });
 
       // 🚨 CRITICAL: Check for errors immediately after the fetch call

@@ -26,6 +26,7 @@ sessions: dict[str, dict] = {}
 class ChatIn(BaseModel):
     session_id: str | None = None
     answer: str | None    = None
+    project_id: str | None = None
 
 class ChatOut(BaseModel):
     session_id: str

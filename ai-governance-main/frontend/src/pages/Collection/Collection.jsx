@@ -167,7 +167,8 @@ const Collection = () => {
       const token = localStorage.getItem("token");
       const response = await axios.post(`${API_BASE_URL}/requirements/collect`, {
         session_id: sessionId,
-        messages: [...messages, userMessage]
+        messages: [...messages, userMessage],
+        project_id: selectedProjectId
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });

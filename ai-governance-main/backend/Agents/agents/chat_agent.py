@@ -188,11 +188,13 @@ class RAGState(TypedDict):
     question: str
     context: str
     answer: str
+    grounding: str
 
 _prompt = ChatPromptTemplate.from_template(
     (
         "You are a concise, accurate assistant. Use ONLY the provided context to answer. "
         "If the answer isn't in the context, say you don't know.\n\n"
+        "Grounding Context:\n{grounding}\n\n"
         "Chat history (may be empty):\n{history}\n\n"
         "Context:\n{context}\n\n"
         "Question: {question}"
@@ -230,6 +232,7 @@ def _build_graph():
             history=history_text,
             context=state.get("context", ""),
             question=state["question"],
+            grounding=state.get("grounding", ""),
         )
         out = _llm.invoke(msg)
         return {"answer": out.content}
@@ -247,6 +250,7 @@ _graph = _build_graph()
 class RAGAskIn(BaseModel):
     question: str
     session_id: Optional[str] = None
+    project_id: Optional[str] = None
 
 class RAGAskOut(BaseModel):
     session_id: str
@@ -304,11 +308,69 @@ def rag_ask(payload: RAGAskIn):
     hist = _rag_histories.get(sid) or _History()
     hist.add_user(payload.question)
 
+    context_grounding = ""
+    if payload.project_id:
+        try:
+            from .library_store import _db
+            db = _db()
+            if db is not None:
+                project = db.projects.find_one({"projectId": payload.project_id})
+                if project:
+                    context_grounding += f"=== Active Project: {project.get('projectName', 'Unnamed')} ===\n"
+                    q_resp = project.get("questionnaireResponses")
+                    if q_resp:
+                        context_grounding += "Project Questionnaire Answers:\n"
+                        for key, val in q_resp.items():
+                            if val:
+                                context_grounding += f"- {key}: {val}\n"
+                    
+                    # Fetch assets
+                    project_obj_id = project.get("_id")
+                    if project_obj_id:
+                        assets = list(db.assets.find({"project": project_obj_id}))
+                        if assets:
+                            context_grounding += "\nProject Registered Assets:\n"
+                            for a in assets:
+                                context_grounding += f"- Name: {a.get('name')} | Type: {a.get('type')} | Risk Level: {a.get('riskLevel')} | Description: {a.get('description')}\n"
+                    
+                    # Fetch requirements
+                    reqs = list(db.securityrequirements.find({"projectId": payload.project_id}))
+                    if reqs:
+                        context_grounding += "\nProject Saved Security Requirements:\n"
+                        for r in reqs:
+                            context_grounding += f"- Title: {r.get('title')} | Category: {r.get('category')} | Priority: {r.get('priority')} | Description: {r.get('description')}\n"
+        except Exception as db_err:
+            print(f"Error fetching MongoDB project context for RAG grounding: {db_err}")
+
+    # Load predefined risks and controls from Excel library
+    try:
+        from .library_store import read_ai_risks_from_store, read_ai_controls_from_store
+        ai_risks = read_ai_risks_from_store()
+        ai_controls = read_ai_controls_from_store()
+        
+        context_grounding += "\n=== Reference Excel Framework Library ===\n"
+        context_grounding += "Predefined AI Risks:\n"
+        for _, row in ai_risks.head(15).iterrows():
+            risk_id = row.get("risk id") or row.get("risk") or ""
+            risk_name = row.get("risk name") or row.get("risk") or ""
+            mitigation = row.get("mitigation") or ""
+            context_grounding += f"- [{risk_id}] {risk_name} (Mitigation: {mitigation})\n"
+            
+        context_grounding += "\nPredefined AI Controls:\n"
+        for _, row in ai_controls.head(15).iterrows():
+            code = row.get("code") or row.get("control_id") or ""
+            ctrl = row.get("control") or ""
+            reqs = row.get("requirements") or ""
+            context_grounding += f"- [{code}] {ctrl} (Requirements: {reqs})\n"
+    except Exception as ee:
+        print(f"Error loading Excel libraries for RAG grounding: {ee}")
+
     inputs = {
         "question": payload.question,
         "context": "",
         "answer": "",
         "history": hist.to_plaintext(),
+        "grounding": context_grounding,
     }
 
     result = _graph.invoke(inputs)
