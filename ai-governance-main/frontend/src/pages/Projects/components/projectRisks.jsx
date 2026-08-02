@@ -48,7 +48,11 @@ const ProjectRisks = ({ projectId }) => {
           severity: risk.severity,
           likelihood: "Possible", // Default value
           mitigation: risk.mitigation || "No mitigation specified",
-          status: risk.isActive ? "Active" : "Inactive",
+          status: risk.isActive
+            ? "Active"
+            : risk.status && risk.status !== "Not Set"
+            ? risk.status // e.g. "Closed", set when its control was implemented
+            : "Inactive",
           riskLevel: getRiskLevelFromSeverity(risk.severity),
           riskLevelColor: getRiskLevelColor(
             getRiskLevelFromSeverity(risk.severity)

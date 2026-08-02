@@ -1,4 +1,5 @@
 import ControlAssessment from "../models/ControlAssessment.js";
+import Risks from "../models/Risks.js";
 
 /**
  * Normalizes a raw "control" object from an agent into the database schema shape.
@@ -112,6 +113,25 @@ class ControlMatrixService {
       } catch (error) {
         // Log the error but don't fail the entire control update operation
         console.error('Error triggering governance score recalculation:', error);
+      }
+    }
+
+    // If the control just became Implemented, close its related risk.
+    if (patch.status === "Implemented" && updatedDoc.relatedRisks) {
+      try {
+        await Risks.updateOne(
+          {
+            riskAssessmentId: updatedDoc.relatedRisks,
+            projectId: updatedDoc.projectId,
+          },
+          { $set: { status: "Closed", isActive: false } }
+        );
+      } catch (error) {
+        // Log the error but don't fail the entire control update operation
+        console.error(
+          `Error closing related risk ${updatedDoc.relatedRisks} for control ${updatedDoc._id}:`,
+          error
+        );
       }
     }
 
