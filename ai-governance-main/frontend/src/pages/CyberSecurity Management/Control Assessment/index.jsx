@@ -162,14 +162,26 @@ const ControlAssessment = () => {
   }, [projects]);
 
   const handleStatusChange = (controlId, newStatus) => {
+    const previousStatus = controls.find((c) => c._id === controlId)?.status;
     setControls((prev) =>
       prev.map((c) => (c._id === controlId ? { ...c, status: newStatus } : c))
     );
     controlService
       .updateControl(controlId, { status: newStatus })
-      .catch((err) =>
-        console.error(`Failed to update control ${controlId}:`, err)
-      );
+      .catch((err) => {
+        console.error(`Failed to update control ${controlId}:`, err);
+        // Roll back the optimistic update so the UI matches what's actually persisted
+        setControls((prev) =>
+          prev.map((c) =>
+            c._id === controlId ? { ...c, status: previousStatus } : c
+          )
+        );
+        window.showNotification?.(
+          "error",
+          "Status update failed",
+          err.response?.data?.error || "Could not save the new status. Please try again."
+        );
+      });
   };
 
   const handleExport = async (format) => {

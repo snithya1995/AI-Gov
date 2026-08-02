@@ -144,11 +144,24 @@ const ProjectRisks = ({ projectId }) => {
 
   // Handle risk add from modal
   const handleAddRisk = async (newRisk) => {
+    // riskAssessmentId/sessionId are required by the backend but this modal
+    // is a manual, freeform add with no questionnaire session behind it, so
+    // generate standalone ids the same way the AI Risk Assessment page does.
+    const randomId = Math.floor(Math.random() * 900 + 100);
+    const enrichedRisk = {
+      ...newRisk,
+      riskAssessmentId: `PR-${randomId}`,
+      sessionId: `S-${Date.now().toString().slice(-6)}`,
+    };
+
     try {
-      await riskMatrixService.addRisk(projectId, newRisk);
-      fetchProjectRisks();
+      await riskMatrixService.addRisk(projectId, enrichedRisk);
+      await fetchProjectRisks();
+      window.showNotification?.("success", "Risk added", `"${newRisk.riskName}" was added successfully.`);
     } catch (err) {
       console.error("Error adding new risk:", err);
+      window.showNotification?.("error", "Failed to add risk", err.message || "Unknown error");
+      throw err; // let the modal know the add failed so it can keep the form open
     }
   };
 

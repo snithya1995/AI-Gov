@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -7,60 +7,63 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Edit, Trash2 } from "lucide-react";
 import riskMatrixService from "../../../services/riskMatrixService";
 
+// Standalone page (no :projectId in its route), so risks it creates are
+// grouped under this fixed pseudo-project id.
+const PROJECT_ID = "cybersecurity-risk-manager";
+
+// The Risks model stores a 1-5 numeric severity, not the impact/probability
+// labels this table displays; derive a label for display purposes.
+const severityToLevel = (severity) => {
+  if (severity >= 5) return "Extreme";
+  if (severity >= 4) return "High";
+  if (severity >= 3) return "Medium";
+  if (severity >= 2) return "Low";
+  return "Minor";
+};
+
+const mapRiskForTable = (risk) => ({
+  id: risk.riskAssessmentId || risk._id,
+  _id: risk._id,
+  riskDescription: risk.riskName,
+  assetOwner: risk.riskOwner,
+  impact: severityToLevel(risk.severity),
+  rawProbability: severityToLevel(risk.severity),
+  rawImpact: severityToLevel(risk.severity),
+  rawRiskRating: severityToLevel(risk.severity),
+  riskTreatment: risk.mitigation || "N/A",
+  treatmentCost: "N/A",
+  treatmentStatus: risk.status || "Not Set",
+  treatedProbability: "N/A",
+  treatedImpact: "N/A",
+  targetRiskRating: "N/A",
+  currentRiskRating: severityToLevel(risk.severity),
+  notes: risk.justification || "",
+});
+
 const RiskManager = () => {
-  const [risks, setRisks] = useState([
-    {
-      id: "R001",
-      riskDescription: "Ransomware Attack",
-      assetOwner: "IT Department",
-      impact: "Extreme",
-      rawProbability: "High",
-      rawImpact: "Extreme",
-      rawRiskRating: "Extreme",
-      riskTreatment: "Enhanced Security Measures",
-      treatmentCost: "€5000",
-      treatmentStatus: "In Progress",
-      treatedProbability: "Moderate",
-      treatedImpact: "Moderate",
-      targetRiskRating: "Moderate",
-      currentRiskRating: "Moderate",
-      notes: "Implementing multi-factor authentication and regular backups"
-    },
-    {
-      id: "R002",
-      riskDescription: "Data Breach",
-      assetOwner: "Data Protection Team",
-      impact: "High",
-      rawProbability: "Medium",
-      rawImpact: "High",
-      rawRiskRating: "High",
-      riskTreatment: "Data Encryption",
-      treatmentCost: "€3000",
-      treatmentStatus: "Completed",
-      treatedProbability: "Low",
-      treatedImpact: "Low",
-      targetRiskRating: "Low",
-      currentRiskRating: "Low",
-      notes: "All sensitive data now encrypted at rest and in transit"
-    },
-    {
-      id: "R003",
-      riskDescription: "Phishing Attack",
-      assetOwner: "Security Team",
-      impact: "Medium",
-      rawProbability: "High",
-      rawImpact: "Medium",
-      rawRiskRating: "High",
-      riskTreatment: "Employee Training",
-      treatmentCost: "€1500",
-      treatmentStatus: "Planned",
-      treatedProbability: "Medium",
-      treatedImpact: "Low",
-      targetRiskRating: "Medium",
-      currentRiskRating: "High",
-      notes: "Scheduled quarterly phishing awareness training"
+  const [risks, setRisks] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const fetchRisks = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await riskMatrixService.getRisksByProject(PROJECT_ID, {
+        limit: 100,
+      });
+      setRisks((result.risks || []).map(mapRiskForTable));
+    } catch (e) {
+      console.error("Error fetching risks:", e);
+      setError(e.message || "Failed to load risks.");
+    } finally {
+      setLoading(false);
     }
-  ]);
+  }, []);
+
+  useEffect(() => {
+    fetchRisks();
+  }, [fetchRisks]);
 
   const getRiskColor = (level) => {
     switch (level) {
@@ -96,14 +99,25 @@ const RiskManager = () => {
 
   const handleAddRisk = async (riskData) => {
     try {
-      const projectId = "cybersecurity-risk-manager"; // This should be dynamic based on your app structure
-      
-      await riskMatrixService.addRisk(projectId, riskData);
-      // Refresh the risks list
-      // You might need to add a fetchRisks function here
-      console.log("Risk added successfully");
+      // riskAssessmentId/sessionId are required by the backend but this is a
+      // freeform manual-entry page with no questionnaire session behind it,
+      // so generate standalone ids the same way the AI Risk Assessment page does.
+      const randomId = Math.floor(Math.random() * 900 + 100);
+      const enrichedRiskData = {
+        ...riskData,
+        riskAssessmentId: `CB-${randomId}`,
+        sessionId: `S-${Date.now().toString().slice(-6)}`,
+      };
+
+      await riskMatrixService.addRisk(PROJECT_ID, enrichedRiskData);
+      await fetchRisks();
     } catch (error) {
       console.error("Error adding risk:", error);
+      window.showNotification?.(
+        "error",
+        "Failed to add risk",
+        error.message || "Unknown error"
+      );
     }
   };
 
@@ -116,6 +130,7 @@ const RiskManager = () => {
             <h1 className="text-3xl font-bold text-gray-900">Risk Management Dashboard</h1>
             <p className="text-gray-600 mt-2">
               Comprehensive overview of all identified risks and their treatment status
+              {!loading && !error && ` — ${risks.length} risk${risks.length === 1 ? "" : "s"}`}
             </p>
           </div>
           <Button 
@@ -144,6 +159,13 @@ const RiskManager = () => {
 
         <Card className='max-w-[1550px]'>
           <CardContent className="p-0">
+            {loading ? (
+              <div className="p-6 text-center text-gray-500">Loading risks…</div>
+            ) : error ? (
+              <div className="p-6 text-center text-red-600">{error}</div>
+            ) : risks.length === 0 ? (
+              <div className="p-6 text-center text-gray-500">No risks found. Click "Create" to add one.</div>
+            ) : (
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
@@ -217,6 +239,7 @@ const RiskManager = () => {
                 </TableBody>
               </Table>
             </div>
+            )}
           </CardContent>
         </Card>
 

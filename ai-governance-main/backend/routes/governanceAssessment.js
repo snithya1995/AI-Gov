@@ -1,6 +1,7 @@
 import express from 'express';
 import GovernanceAssessmentService from '../services/governanceAssessmentService.js';
 import { authenticateToken } from '../middleware/auth.js';
+import { userQuotaLimiter } from '../middleware/rateLimit.js';
 
 const router = express.Router();
 
@@ -83,7 +84,7 @@ router.get('/:projectId/history', authenticateToken, async (req, res) => {
 });
 
 // Recalculate governance scores for a project
-router.post('/:projectId/recalculate', authenticateToken, async (req, res) => {
+router.post('/:projectId/recalculate', authenticateToken, userQuotaLimiter, async (req, res) => {
   try {
     const { projectId } = req.params;
     

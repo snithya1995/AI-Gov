@@ -180,6 +180,7 @@ const AIControlAssessment = () => {
 
   // ... (handleStatusChange, handleExportExcel, handleExportPDF remain the same) ...
   const handleStatusChange = (controlId, newStatus) => {
+    const previousStatus = controls.find((c) => c._id === controlId)?.status;
     setControls((prevControls) =>
       prevControls.map((control) =>
         control._id === controlId ? { ...control, status: newStatus } : control
@@ -189,6 +190,19 @@ const AIControlAssessment = () => {
       .updateControl(controlId, { status: newStatus })
       .catch((err) => {
         console.error("Failed to update control status:", err);
+        // Roll back the optimistic update so the UI matches what's actually persisted
+        setControls((prevControls) =>
+          prevControls.map((control) =>
+            control._id === controlId
+              ? { ...control, status: previousStatus }
+              : control
+          )
+        );
+        window.showNotification?.(
+          "error",
+          "Status update failed",
+          err.response?.data?.error || "Could not save the new status. Please try again."
+        );
       });
   };
 

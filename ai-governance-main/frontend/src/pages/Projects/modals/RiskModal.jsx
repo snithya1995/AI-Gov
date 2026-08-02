@@ -32,8 +32,9 @@ const AddRiskModal = ({ onAddRisk }) => {
   const [newRiskMitigation, setNewRiskMitigation] = useState("");
   const [newRiskJustification, setNewRiskJustification] = useState("");
   const [newRiskTargetDate, setNewRiskTargetDate] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!newRiskName.trim() || !newRiskOwner.trim() || !newRiskSeverity) {
       return; // simple validation
     }
@@ -49,17 +50,25 @@ const AddRiskModal = ({ onAddRisk }) => {
       isActive: true,
     };
 
-    onAddRisk?.(newRisk); // send risk back to parent
+    setSubmitting(true);
+    try {
+      await onAddRisk?.(newRisk); // send risk back to parent, wait for it to persist
 
-    // reset + close
-    setNewRiskName("");
-    setNewRiskOwner("");
-    setNewRiskSeverity("3");
-    setNewRiskLikelihood("Possible");
-    setNewRiskMitigation("");
-    setNewRiskJustification("");
-    setNewRiskTargetDate("");
-    setIsModalOpen(false);
+      // reset + close only once the risk is actually saved
+      setNewRiskName("");
+      setNewRiskOwner("");
+      setNewRiskSeverity("3");
+      setNewRiskLikelihood("Possible");
+      setNewRiskMitigation("");
+      setNewRiskJustification("");
+      setNewRiskTargetDate("");
+      setIsModalOpen(false);
+    } catch {
+      // Parent already surfaces the error notification; keep the dialog open
+      // with the entered data intact so the user can retry.
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -171,7 +180,9 @@ const AddRiskModal = ({ onAddRisk }) => {
           <DialogClose asChild>
             <Button variant="outlined">Cancel</Button>
           </DialogClose>
-          <Button onClick={handleSubmit}>Add Risk</Button>
+          <Button onClick={handleSubmit} disabled={submitting}>
+            {submitting ? "Adding..." : "Add Risk"}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

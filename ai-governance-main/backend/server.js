@@ -74,10 +74,14 @@ app.get('/', (req, res) => {
 app.use('/requirements', requirementsRouter);
 app.use('/assets', assetsRouter);
 // ------------------------------
-// PROTECTED ROUTES (AUTH + RATE LIMIT)
+// PROTECTED ROUTES (AUTH)
 // ------------------------------
+// NOTE: userQuotaLimiter is NOT applied globally here. It protects
+// LLM/agent-calling endpoints from burst traffic and cost overruns; it is
+// applied per-route (see questionnaire.js, governanceAssessment.js,
+// trust_center_documents.js) so plain CRUD reads/writes aren't throttled
+// by the same tight budget meant for AI calls.
 app.use(authenticateToken);
-app.use(userQuotaLimiter);
 
 // ------------------------------
 // PROTECTED ROUTES

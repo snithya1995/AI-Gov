@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import RiskMatrixService from "../services/riskMatrixService.js";
 import ControlMatrixService from "../services/controlAssessmentService.js";
 import { authenticateToken, requireAdmin } from "../middleware/auth.js";
+import { userQuotaLimiter } from "../middleware/rateLimit.js";
 import { nanoid } from "nanoid";
 import Project from "../models/Projects.js";
 import axios from "axios";
@@ -124,7 +125,7 @@ function familyFromUseCase(useCaseType = "") {
     : "ai";
 }
 
-router.post("/process", authenticateToken, async (req, res) => {
+router.post("/process", authenticateToken, userQuotaLimiter, async (req, res) => {
   let { questionnaireResponses, useCaseType, projectId } = req.body;
   const createdBy = req.user._id;
   const sessionId = nanoid();
@@ -398,7 +399,7 @@ router.post("/process", authenticateToken, async (req, res) => {
 });
 
 // ✅ Generate or Regenerate risks based on questionnaire, assets, and requirements specifically linked to the project
-router.post("/project/:projectId/generate", authenticateToken, async (req, res) => {
+router.post("/project/:projectId/generate", authenticateToken, userQuotaLimiter, async (req, res) => {
   const { projectId } = req.params;
   const createdBy = req.user._id;
   const sessionId = nanoid();

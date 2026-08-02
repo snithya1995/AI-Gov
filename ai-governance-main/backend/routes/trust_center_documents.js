@@ -1,6 +1,7 @@
 // routes/documents.js
 import express from "express";
 import { authenticateToken } from '../middleware/auth.js';
+import { userQuotaLimiter } from '../middleware/rateLimit.js';
 import { Storage } from "@google-cloud/storage";
 
 const router = express.Router();
@@ -247,7 +248,7 @@ router.get("/api/documents/url/:fileName", async (req, res) => {
 });
 
 // Endpoint to manually trigger GCS sync
-router.post("/api/documents/sync", async (req, res) => {
+router.post("/api/documents/sync", userQuotaLimiter, async (req, res) => {
   try {
     const AGENT_URL = process.env.AGENT_URL || 'http://localhost:8000';
     
