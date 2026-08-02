@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # MongoDB Database
   mongodb:
@@ -18,9 +16,21 @@ services:
     networks:
       - governance-network-dev
 
+  # Redis Cache Service
+  redis:
+    image: redis:6-alpine
+    container_name: governance-redis-dev
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data_dev:/data
+    networks:
+      - governance-network-dev
+
   # Backend API (Development)
   backend:
-    build: 
+    build:
       context: .
       dockerfile: Dockerfile.dev
     container_name: governance-backend-dev
@@ -29,6 +39,8 @@ services:
       - NODE_ENV=development
       - PORT=3001
       - MONGODB_URI=mongodb://${MONGO_USERNAME:-admin}:${MONGO_PASSWORD:-password123}@mongodb:27017/${MONGO_DATABASE:-governance_db}?retryWrites=true&w=majority&appName=Governance-AI&authSource=admin
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
     ports:
       - "3001:3001"
     volumes:
@@ -36,12 +48,15 @@ services:
       - /app/node_modules
     depends_on:
       - mongodb
+      - redis
     networks:
       - governance-network-dev
     command: npm run dev
 
 volumes:
   mongodb_data_dev:
+    driver: local
+  redis_data_dev:
     driver: local
 
 networks:

@@ -1,0 +1,5 @@
+{
+  "watch": ["server.js", "config.js", "routes", "middleware", "models", "services", "schemas"],
+  "ext": "js,mjs,cjs,json",
+  "ignore": ["Agents", "node_modules", "DB_schema.sql"]
+}

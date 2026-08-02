@@ -71,6 +71,12 @@ ATLASSIAN_API_TOKEN=your_atlassian_api_token
 > [!WARNING]
 > **Git Protection:** Double-check that all three `.env` files are ignored by checking your git status before committing. Never push raw API keys or passwords to GitHub.
 
+> [!WARNING]
+> **File Encoding:** These `.env` files must be saved as **UTF-8**, not UTF-16. If you create them on Windows via PowerShell redirection (e.g. `"..." > .env`), PowerShell defaults to UTF-16LE, which Vite/dotenv cannot parse — variables will silently fail to load. Use your editor's "Save As" with UTF-8 encoding, or `Set-Content -Encoding utf8` instead of `>`. Check with `file .env` (should say "ASCII text" or "UTF-8", not "UTF-16").
+
+> [!NOTE]
+> **Two separate databases are used.** The Node backend (`backend/.env`) connects to the `governance_db` database and owns assessment templates, users, projects, etc. The Python agent (`backend/Agents/.env`, `MONGODB_DB=AI-Governance`) connects to a **different** database, `AI-Governance`, used only for RAG uploads/chats and the imported risk/control libraries. Don't expect `npm run seed` output to show up under `AI-Governance`, or `import_libraries.py` output to show up under `governance_db` — they're intentionally separate.
+
 ---
 
 ## ⚡ Step-by-Step Installation
@@ -111,11 +117,16 @@ pip install -r requirements.txt
 The application requires MongoDB and Redis to be running.
 
 ### 1. Start Services via Docker Compose
-To run MongoDB and Redis easily, start them using the Docker Compose configuration inside the `backend/` directory:
+To run MongoDB and Redis easily, start them using the Docker Compose configuration inside the `backend/` directory. Make sure Docker Desktop is running first.
+
+> [!NOTE]
+> Modern Docker Desktop ships **Compose V2**, invoked as `docker compose` (a subcommand, no hyphen) rather than the older standalone `docker-compose` binary. If `docker-compose` isn't found on your machine, use the command below instead — it's equivalent.
+
 ```bash
 cd backend
-docker-compose -f docker-compose.dev.yml up -d
+docker compose -f docker-compose.dev.yml up -d
 ```
+*This starts both `mongodb` (port `27017`) and `redis` (port `6379`) containers.*
 
 ### 2. Seed Assessment Templates (Node Backend)
 Ensure your backend dependencies are installed, then run the database seeding command inside the `backend/` directory:
@@ -149,8 +160,8 @@ npm run dev
 ### Terminal 2: Python FastAPI Agent
 ```bash
 cd backend/Agents
-# Ensure venv is activated
-.\.venv\Scripts\python main.py
+# Ensure venv is activated first (see Step 3 above), then:
+python main.py
 ```
 *Runs on `http://localhost:8000`*
 
@@ -192,6 +203,15 @@ Use these URLs to verify that all systems are healthy:
 
 ## ⚙️ Troubleshooting
 
-* **MongoDB Connection Issues**: Ensure Docker is running and ports are mapped correctly (`27017`). Check backend logs in Terminal 1.
-* **Agent Library Counts 0**: Run `python import_libraries.py` in the `backend/Agents` directory to import the local excel libraries to MongoDB.
+* **MongoDB Connection Issues**: Ensure Docker Desktop is actually running (not just installed) — `docker info` should succeed. Ensure ports are mapped correctly (`27017`). Check backend logs in Terminal 1.
+* **`docker-compose: command not found`**: Use `docker compose` (space, no hyphen) instead — see the note in the Docker Compose step above.
+* **Agent Library Counts 0**: Run `python import_libraries.py` in the `backend/Agents` directory to import the local excel libraries to MongoDB. Remember this seeds the separate `AI-Governance` database, not `governance_db`.
+* **Inspecting MongoDB from the CLI**: Don't paste multi-line command blocks (e.g. `show dbs` + `use ...` + `show collections`) into an interactive `mongosh` session — it buffers them as one incomplete statement instead of running each line. Either type one line at a time, or use a single non-interactive call, e.g.:
+  ```bash
+  docker exec governance-mongodb-dev mongosh -u admin -p password123 --authenticationDatabase admin --quiet --eval "
+  const gdb = db.getSiblingDB('governance_db');
+  print(gdb.getCollectionNames());
+  "
+  ```
+* **Login fails in the browser but the API works fine via curl**: Usually a stale frontend session — hard refresh (Cmd/Ctrl+Shift+R). Check the browser DevTools Network/Console tab for the actual `/auth/login` response before assuming it's a backend issue.
 * **Vite build spawn permission errors**: If you encounter esbuild EPERM errors during frontend dev server launch on Windows, run your terminal as Administrator or verify Node permissions.
