@@ -1,0 +1,56 @@
+name: AI-Governance CI
+
+on:
+  push:
+    branches:
+      - main
+      - ci-pipeline
+
+  pull_request:
+    branches:
+      - main
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Frontend - ESLint
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: ai-governance-main/frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: ai-governance-main/frontend
+        run: npm ci
+
+      - name: Lint frontend
+        working-directory: ai-governance-main/frontend
+        run: npm run lint
+
+      # Python - Ruff
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Ruff
+        run: pip install ruff
+
+      - name: Lint AI agents
+        working-directory: ai-governance-main/backend/Agents
+        run: ruff check .
