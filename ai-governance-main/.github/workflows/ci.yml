@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - main
+      - ci-pipeline
   pull_request:
     branches:
       - main  
@@ -24,7 +25,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20"
-          cache: 'pip'
+          cache: 'npm'
 
       - name: Install frontend dependencies
         working-directory: frontend
