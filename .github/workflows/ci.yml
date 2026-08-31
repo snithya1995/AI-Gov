@@ -79,3 +79,50 @@ jobs:
         run: |
           echo "Frontend automated tests are not configured yet."
           echo "Test stage will be enabled when the development team adds tests."
+  dependency-scan:
+    name: Dependency Security Scan
+    runs-on: ubuntu-latest
+    needs: lint
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # -------------------------
+      # Node.js dependencies
+      # -------------------------
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install frontend dependencies
+        working-directory: ai-governance-main/frontend
+        run: npm ci
+
+      - name: Audit frontend dependencies
+        working-directory: ai-governance-main/frontend
+        run: npm audit --audit-level=high
+
+      - name: Install backend dependencies
+        working-directory: ai-governance-main/backend
+        run: npm ci
+
+      - name: Audit backend dependencies
+        working-directory: ai-governance-main/backend
+        run: npm audit --audit-level=high
+
+      # -------------------------
+      # Python dependencies
+      # -------------------------
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install pip-audit
+        run: pip install pip-audit
+
+      - name: Scan Python dependencies
+        working-directory: ai-governance-main/backend/Agents
+        run: pip-audit -r requirements.txt  
