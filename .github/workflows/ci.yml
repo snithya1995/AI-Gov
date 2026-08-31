@@ -182,7 +182,7 @@ jobs:
       # Backend
       - name: Install backend dependencies
         working-directory: ai-governance-main/backend
-        run: npm ci
+        run: npm install
 
       # Python syntax validation
       - name: Setup Python
