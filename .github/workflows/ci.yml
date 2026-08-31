@@ -56,26 +56,26 @@ jobs:
         working-directory: ai-governance-main/backend/Agents
         continue-on-error: true
         run: ruff check .
-    test:
-      name: Test
-      runs-on: ubuntu-latest
-      needs: lint
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    needs: lint
 
-      steps:
-        - name: Checkout code
-          uses: actions/checkout@v4
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-        - name: Setup Node.js
-          uses: actions/setup-node@v4
-          with:
-            node-version: "20"
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
 
-        - name: Install frontend dependencies
-          working-directory: ai-governance-main/frontend
-          run: npm ci
+      - name: Install frontend dependencies
+        working-directory: ai-governance-main/frontend
+        run: npm ci
 
-        - name: Frontend test
-          working-directory: ai-governance-main/frontend
-          run: |
-            echo "Frontend automated tests are not configured yet."
-            echo "Test stage will be enabled when the development team adds tests."
+      - name: Frontend test
+        working-directory: ai-governance-main/frontend
+        run: |
+          echo "Frontend automated tests are not configured yet."
+          echo "Test stage will be enabled when the development team adds tests."
