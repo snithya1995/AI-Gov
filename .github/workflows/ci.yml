@@ -107,7 +107,7 @@ jobs:
 
       - name: Install backend dependencies
         working-directory: ai-governance-main/backend
-        run: npm ci
+        run: npm install
 
       - name: Audit backend dependencies
         working-directory: ai-governance-main/backend
@@ -133,7 +133,7 @@ jobs:
   security-scan:
     name: Security Scan
     runs-on: ubuntu-latest
-    needs: test
+    needs: dependency-scan
 
     permissions:
       actions: read
