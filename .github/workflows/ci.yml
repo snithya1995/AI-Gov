@@ -80,7 +80,7 @@ jobs:
           echo "Frontend automated tests are not configured yet."
           echo "Test stage will be enabled when the development team adds tests."
   dependency-scan:
-    name: Dependency Security Scan
+    name: Dependency Scan
     runs-on: ubuntu-latest
     needs: test
 
