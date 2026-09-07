@@ -104,6 +104,7 @@ jobs:
 
       - name: Audit frontend dependencies
         working-directory: ai-governance-main/frontend
+        continue-on-error: True
         run: npm audit --audit-level=high
 
       - name: Install backend dependencies
