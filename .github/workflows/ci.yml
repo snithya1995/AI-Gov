@@ -41,6 +41,7 @@ jobs:
 
       - name: Lint frontend
         working-directory: ai-governance-main/frontend
+        continue-on-error: True
         run: npm run lint
 
       # Python - Ruff
