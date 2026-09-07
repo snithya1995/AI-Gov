@@ -107,7 +107,7 @@ jobs:
 
       - name: Install backend dependencies
         working-directory: ai-governance-main/backend
-        run: npm install
+        run: npm ci
 
       - name: Audit backend dependencies
         working-directory: ai-governance-main/backend
