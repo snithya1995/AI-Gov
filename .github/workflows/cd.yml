@@ -16,12 +16,13 @@ permissions:
 env:
   PROJECT_ID: ai-gov-2026-1
   REGION: us-central1
+  GAR_REPOSITORY: ai-gov
   WIF_PROVIDER: projects/260715378235/locations/global/workloadIdentityPools/github-actions/providers/github
   CI_SERVICE_ACCOUNT: ai-gov-cicd@ai-gov-2026-1.iam.gserviceaccount.com
 
 jobs:
-  authenticate:
-    name: Authenticate to Google Cloud
+  build-and-push:
+    name: Build and Push Images
     runs-on: ubuntu-latest
 
     steps:
@@ -38,7 +39,36 @@ jobs:
       - name: Setup gcloud
         uses: google-github-actions/setup-gcloud@v3
 
-      - name: Verify Google Cloud identity
+      - name: Configure Docker authentication
         run: |
-          gcloud auth list
-          gcloud config get-value project
+          gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+
+      - name: Build and push frontend image
+        run: |
+          docker build \
+            -f ai-governance-main/frontend/Dockerfile \
+            -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.GAR_REPOSITORY }}/frontend:${{ github.sha }} \
+            ai-governance-main/frontend
+
+          docker push \
+            ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.GAR_REPOSITORY }}/frontend:${{ github.sha }}
+
+      - name: Build and push backend image
+        run: |
+          docker build \
+            -f ai-governance-main/backend/Dockerfile \
+            -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.GAR_REPOSITORY }}/backend:${{ github.sha }} \
+            ai-governance-main/backend
+
+          docker push \
+            ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.GAR_REPOSITORY }}/backend:${{ github.sha }}
+
+      - name: Build and push agent image
+        run: |
+          docker build \
+            -f ai-governance-main/backend/Agents/Dockerfile \
+            -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.GAR_REPOSITORY }}/agent:${{ github.sha }} \
+            ai-governance-main/backend/Agents
+
+          docker push \
+            ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.GAR_REPOSITORY }}/agent:${{ github.sha }}
