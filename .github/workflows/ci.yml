@@ -187,17 +187,17 @@ jobs:
         working-directory: ai-governance-main/backend/Agents
         run: python -m compileall .
 
-docker-build:
-  name: Docker Build
-  runs-on: ubuntu-latest
+  docker-build:
+    name: Docker Build
+    runs-on: ubuntu-latest
 
-  needs:
-    - lint
-    - dependency-scan
-    - security-scan
-    - build
+    needs:
+      - lint
+      - dependency-scan
+      - security-scan
+      - build
 
-  steps:
+    steps:
     - name: Checkout code
       uses: actions/checkout@v4
 
@@ -222,55 +222,55 @@ docker-build:
           -t ai-governance-agent:${{ github.sha }} \
           ai-governance-main/backend/Agents
 
-push-images:
-  name: Push Docker Images
-  runs-on: ubuntu-latest
+  push-images:
+    name: Push Docker Images
+    runs-on: ubuntu-latest
 
-  needs:
-    - docker-build
+    needs:
+      - docker-build
 
-  if: github.ref == 'refs/heads/ci-pipeline' && github.event_name == 'push'
+    if: github.ref == 'refs/heads/ci-pipeline' && github.event_name == 'push'
   
-  - name: Authenticate to Google Cloud
-    uses: google-github-actions/auth@v2
-    with:
-      credentials_json: ${{ secrets.GCP_SA_KEY }}
+    - name: Authenticate to Google Cloud
+      uses: google-github-actions/auth@v2
+      with:
+        credentials_json: ${{ secrets.GCP_SA_KEY }}
 
-  - name: Configure Docker
-    run: |
-      gcloud auth configure-docker \
-        us-central1-docker.pkg.dev \
-        --quiet
+    - name: Configure Docker
+      run: |
+        gcloud auth configure-docker \
+          us-central1-docker.pkg.dev \
+          --quiet
   
-  - name: Build and push frontend
-    run: |
-      IMAGE="us-central1-docker.pkg.dev/bionic-mercury-455722-g1/ai-governance/ai-governance-frontend:${{ github.sha }}"
+    - name: Build and push frontend
+      run: |
+        IMAGE="us-central1-docker.pkg.dev/bionic-mercury-455722-g1/ai-governance/ai-governance-frontend:${{ github.sha }}"
 
-      docker build \
-        -f ai-governance-main/frontend/Dockerfile \
-        -t "$IMAGE" \
-        ai-governance-main/frontend
+        docker build \
+          -f ai-governance-main/frontend/Dockerfile \
+          -t "$IMAGE" \
+          ai-governance-main/frontend
 
-      docker push "$IMAGE"
+        docker push "$IMAGE"
 
-  - name: Build and push backend
-    run: |
-      IMAGE="us-central1-docker.pkg.dev/bionic-mercury-455722-g1/ai-governance/ai-governance-backend:${{ github.sha }}"
+    - name: Build and push backend
+      run: |
+        IMAGE="us-central1-docker.pkg.dev/bionic-mercury-455722-g1/ai-governance/ai-governance-backend:${{ github.sha }}"
 
-      docker build \
-        -f ai-governance-main/backend/Dockerfile \
-        -t "$IMAGE" \
-        ai-governance-main/backend
+        docker build \
+          -f ai-governance-main/backend/Dockerfile \
+          -t "$IMAGE" \
+          ai-governance-main/backend
 
-      docker push "$IMAGE"
+        docker push "$IMAGE"
 
-  - name: Build and push agent
-    run: |
-      IMAGE="us-central1-docker.pkg.dev/bionic-mercury-455722-g1/ai-governance/ai-governance-agent:${{ github.sha }}"
+    - name: Build and push agent
+      run: |
+        IMAGE="us-central1-docker.pkg.dev/bionic-mercury-455722-g1/ai-governance/ai-governance-agent:${{ github.sha }}"
 
-      docker build \
-        -f ai-governance-main/backend/Agents/Dockerfile \
-        -t "$IMAGE" \
-        ai-governance-main/backend/Agents
+        docker build \
+          -f ai-governance-main/backend/Agents/Dockerfile \
+          -t "$IMAGE" \
+          ai-governance-main/backend/Agents
 
-      docker push "$IMAGE"
+        docker push "$IMAGE"
