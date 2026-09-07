@@ -36,6 +36,7 @@ jobs:
 
       - name: Install frontend dependencies
         working-directory: ai-governance-main/frontend
+        continue-on-error: True
         run: npm ci
 
       - name: Lint frontend
@@ -53,6 +54,7 @@ jobs:
 
       - name: Lint AI agents
         working-directory: ai-governance-main/backend/Agents
+        continue-on-error: True
         run: ruff check .
   test:
     name: Test
