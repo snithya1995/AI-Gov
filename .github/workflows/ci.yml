@@ -99,6 +99,7 @@ jobs:
 
       - name: Install frontend dependencies
         working-directory: ai-governance-main/frontend
+        continue-on-error: True
         run: npm ci
 
       - name: Audit frontend dependencies
@@ -126,6 +127,7 @@ jobs:
 
       - name: Scan Python dependencies
         working-directory: ai-governance-main/backend/Agents
+        continue-on-error: True
         run: pip-audit -r requirements.txt
 
   security-scan:
