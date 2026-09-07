@@ -1,0 +1,44 @@
+name: AI-Governance CD
+
+on:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: cd-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  PROJECT_ID: ai-gov-2026-1
+  REGION: us-central1
+  WIF_PROVIDER: projects/260715378235/locations/global/workloadIdentityPools/github-actions/providers/github
+  CI_SERVICE_ACCOUNT: ai-gov-cicd@ai-gov-2026-1.iam.gserviceaccount.com
+
+jobs:
+  authenticate:
+    name: Authenticate to Google Cloud
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Authenticate with Workload Identity Federation
+        uses: google-github-actions/auth@v3
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+          service_account: ${{ env.CI_SERVICE_ACCOUNT }}
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v3
+
+      - name: Verify Google Cloud identity
+        run: |
+          gcloud auth list
+          gcloud config get-value project
